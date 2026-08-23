@@ -1,0 +1,691 @@
+{
+  "info": {
+    "name": "Campus Lost & Found API",
+    "description": "Campus Lost & Found backend uchun Postman collection.\n\n## Ishlatish\n\n1. Postman -> Import -> bu faylni tanlang.\n2. Serverni ishga tushiring: uvicorn app.main:app --reload\n3. `Auth / Register` -> `Auth / Login` ni yuboring. Login javobidagi token avtomatik `{{token}}` ga saqlanadi, qolgan so'rovlar shu token bilan ishlaydi.\n4. `Listings / Create listing` yuboring — yaratilgan e'lon id'si `{{listingId}}` ga saqlanadi va keyingi so'rovlar shu id bilan ishlaydi.\n\n## Variable'lar\n\n- `baseUrl` — http://localhost:8000/api/v1 (boshqa portda ishlatsangiz o'zgartiring)\n- `token` — Login avtomatik to'ldiradi, qo'lda tegmang\n- `listingId` — Create listing avtomatik to'ldiradi\n\n## Test'lar\n\nHar bir so'rovda status code tekshiruvi bor. Javob Postman'ning pastki qismidagi \"Test Results\" bo'limida ko'rinadi. Endpoint hali yozilmagan bo'lsa test qizil bo'ladi — bu normal, yozganingizdan keyin yashil bo'ladi.\n\n## Collection Runner\n\nBarcha so'rovlarni ketma-ket ishga tushirsangiz (Run collection), tartib to'g'ri ishlaydi: Register -> Login -> Create -> ... -> Delete.\n\nEslatma: `Delete listing` oxirida turadi va yaratilgan e'lonni o'chiradi. Shundan keyin `My listings` bo'sh ro'yxat qaytarishi normal.\n\nBatafsil: API.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "listingId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 (yoki 409 — email allaqachon band)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Javobda id va email bor\", function () {",
+                  "        const data = pm.response.json();",
+                  "        pm.expect(data).to.have.property('id');",
+                  "        pm.expect(data).to.have.property('email');",
+                  "    });",
+                  "",
+                  "    pm.test(\"Javobda parol qaytmaydi\", function () {",
+                  "        const data = pm.response.json();",
+                  "        pm.expect(data).to.not.have.property('password');",
+                  "        pm.expect(data).to.not.have.property('password_hash');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"strong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Yangi user yaratadi -> 201.\n\nShu email bilan ikkinchi marta yuborsangiz -> 409."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"access_token qaytdi\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.access_token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "// Token'ni avtomatik saqlaydi — qolgan so'rovlar shundan foydalanadi",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('token', pm.response.json().access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"strong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "access_token qaytaradi va uni avtomatik {{token}} ga saqlaydi.\n\nEmail yoki parol noto'g'ri bo'lsa -> 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Login — noto'g'ri parol (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Bu so'rov 401 qaytarishi KERAK.\n\nAgar 200 qaytsa — parol tekshiruvida xato bor."
+          },
+          "response": []
+        },
+        {
+          "name": "Current user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Javobda email bor, parol yo'q\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('email');",
+                  "    pm.expect(data).to.not.have.property('password_hash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Token egasining ma'lumoti.\n\nToken yo'q yoki yaroqsiz bo'lsa -> 401."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "item": [
+        {
+          "name": "Create listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Status ACTIVE bo'lib yaratildi\", function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('ACTIVE');",
+                  "});",
+                  "",
+                  "// Yaratilgan id'ni keyingi so'rovlar uchun saqlaydi",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('listingId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"AirPods Pro\",\n  \"description\": \"Found near the library\",\n  \"type\": \"FOUND\",\n  \"date\": \"2026-05-20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings"]
+            },
+            "description": "Token talab qiladi.\n\n`user_id` request'dan olinmaydi — token'dagi userdan olinadi.\n`status` har doim ACTIVE bo'lib yaratiladi.\n\nYaratilgan id avtomatik {{listingId}} ga saqlanadi."
+          },
+          "response": []
+        },
+        {
+          "name": "Create listing — validation xatosi (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"A\",\n  \"description\": \"Too short title\",\n  \"type\": \"BROKEN\",\n  \"date\": \"not-a-date\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings"]
+            },
+            "description": "Ataylab noto'g'ri ma'lumot: title juda qisqa, type mavjud emas, date noto'g'ri.\n\n422 qaytishi KERAK. Agar 201 qaytsa — Pydantic schema'da validation yo'q."
+          },
+          "response": []
+        },
+        {
+          "name": "List listings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Javobda items va total bor\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('items');",
+                  "    pm.expect(data.items).to.be.an('array');",
+                  "    pm.expect(data).to.have.property('total');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?page=1&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": "FOUND",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ochiq endpoint — token kerak emas.\n\n`type` parametrini yoqib ko'ring (checkbox'ni belgilang)."
+          },
+          "response": []
+        },
+        {
+          "name": "Search listings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Topilgan e'lonlar title'ida 'airpods' bor\", function () {",
+                  "    const items = pm.response.json().items;",
+                  "    items.forEach(function (item) {",
+                  "        pm.expect(item.title.toLowerCase()).to.include('airpods');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings?search=airpods",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "airpods"
+                }
+              ]
+            },
+            "description": "Qidiruv faqat title bo'yicha, katta-kichik harf farqlanmaydi (ILIKE).\n\n'airpods' deb yozganda 'AirPods Pro' topilishi kerak."
+          },
+          "response": []
+        },
+        {
+          "name": "Get listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"So'ralgan id qaytdi\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(String(data.id)).to.eql(pm.collectionVariables.get('listingId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "{{listingId}}"]
+            },
+            "description": "Ochiq endpoint. Topilmasa -> 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Get listing — mavjud emas (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "999999"]
+            },
+            "description": "Mavjud bo'lmagan id. 404 qaytishi KERAK.\n\nAgar 500 qaytsa — service'da `if listing is None` tekshiruvi yo'q."
+          },
+          "response": []
+        },
+        {
+          "name": "Update listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Title yangilandi\", function () {",
+                  "    pm.expect(pm.response.json().title).to.eql('AirPods Pro (2nd gen)');",
+                  "});",
+                  "",
+                  "pm.test(\"Yuborilmagan maydonlar o'zgarmadi\", function () {",
+                  "    pm.expect(pm.response.json().description).to.eql('Found near the library');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"AirPods Pro (2nd gen)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "{{listingId}}"]
+            },
+            "description": "Faqat e'lon egasi. Begona e'lon bo'lsa -> 403.\n\nPATCH — faqat yuborilgan maydon yangilanadi. `description` o'zgarmasligi kerak (`exclude_unset=True`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Claim listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status CLAIMED bo'ldi\", function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('CLAIMED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "{{listingId}}", "claim"]
+            },
+            "description": "ACTIVE -> CLAIMED. Token talab qiladi."
+          },
+          "response": []
+        },
+        {
+          "name": "Claim listing — 2-marta (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "{{listingId}}", "claim"]
+            },
+            "description": "Yuqoridagi Claim'dan keyin darhol yuboring.\n\n409 qaytishi KERAK. Agar 200 qaytsa — service'da status tekshiruvi yo'q."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete listing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test(\"Javob bo'sh\", function () {",
+                  "    pm.expect(pm.response.text()).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/listings/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["listings", "{{listingId}}"]
+            },
+            "description": "Faqat e'lon egasi. 204 qaytadi, body bo'lmaydi.\n\nESLATMA: bu so'rov yuqorida yaratilgan e'lonni o'chiradi."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Me",
+      "item": [
+        {
+          "name": "My listings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"items massiv\", function () {",
+                  "    pm.expect(pm.response.json().items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["me", "listings"]
+            },
+            "description": "Faqat token egasining e'lonlari."
+          },
+          "response": []
+        },
+        {
+          "name": "My listings — token'siz (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/listings",
+              "host": ["{{baseUrl}}"],
+              "path": ["me", "listings"]
+            },
+            "description": "Authorization header'siz. 401 qaytishi KERAK.\n\nAgar 200 qaytsa — endpoint himoyalanmagan."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
