@@ -31,7 +31,7 @@ class ListingOut(BaseModel):
     status: ListingStatus
     created_at: datetime
     user_id: int
-    user: Optional[UserOut] = None
+    
 
     class Config:
         from_attributes = True

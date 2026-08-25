@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_session
 from app.listings import service
 from app.listings.constants import ListingType
 from app.listings.schemas import (
@@ -38,7 +38,7 @@ async def get_listings(
     ),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     return await service.get_all_listings(
         db=db,
@@ -56,7 +56,7 @@ async def get_listings(
 )
 async def create_listing(
     listing_in: ListingCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     return await service.create_listing(
@@ -71,7 +71,7 @@ async def create_listing(
     response_model=List[ListingOut],
 )
 async def get_my_listings(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     return await service.get_user_listings(
@@ -86,7 +86,7 @@ async def get_my_listings(
 )
 async def get_listing_detail(
     listing_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     return await service.get_listing_by_id(
         db,
@@ -101,7 +101,7 @@ async def get_listing_detail(
 async def update_listing(
     listing_id: int,
     listing_in: ListingUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     return await service.update_listing(
@@ -118,7 +118,7 @@ async def update_listing(
 )
 async def delete_listing(
     listing_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     await service.delete_listing(
@@ -134,7 +134,7 @@ async def delete_listing(
 )
 async def claim_listing(
     listing_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     return await service.claim_listing(

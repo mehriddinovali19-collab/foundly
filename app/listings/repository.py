@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.listings.constants import ListingStatus, ListingType
 from app.listings.models import Listing
+from app.listings.constants import ListingStatus, ListingType
 from app.listings.schemas import ListingCreate, ListingUpdate
 
 
@@ -13,7 +14,9 @@ async def get_listing_by_id(
     listing_id: int,
 ) -> Optional[Listing]:
     result = await db.execute(
-        select(Listing).where(Listing.id == listing_id)
+        select(Listing)
+        .options(selectinload(Listing.user))
+        .where(Listing.id == listing_id)
     )
 
     return result.scalar_one_or_none()
@@ -25,9 +28,10 @@ async def get_listings(
     listing_type: Optional[ListingType] = None,
     skip: int = 0,
     limit: int = 20,
-) -> tuple[list[Listing], int]:
-
-    query = select(Listing)
+):
+    query = select(Listing).options(
+        selectinload(Listing.user)
+    )
 
     if search:
         query = query.where(
@@ -59,15 +63,16 @@ async def get_listings(
 async def get_user_listings(
     db: AsyncSession,
     user_id: int,
-) -> list[Listing]:
+) -> List[Listing]:
 
     result = await db.execute(
         select(Listing)
+        .options(selectinload(Listing.user))
         .where(Listing.user_id == user_id)
         .order_by(Listing.created_at.desc())
     )
 
-    return list(result.scalars().all())
+    return result.scalars().all()
 
 
 async def create_listing(

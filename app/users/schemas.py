@@ -1,7 +1,7 @@
 from datetime import datetime 
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -15,7 +15,10 @@ class UserLogin(BaseModel):
 
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
+    full_name: str
     email: EmailStr
     created_at: datetime
 
